@@ -1,0 +1,118 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ReplicationEvent = ReplicatedStorage.ReplicationEvent
+
+
+local Quantizer = require(script.Parent.Quantization)
+local DemoFunctions = require(script.Parent.DemoFuncs)
+
+local MAX_POS = 32768
+local MIN_POS = -32768
+local TICK_RATE = 1/60 -- Tick rate: 60
+
+
+
+
+
+
+local function unserializeClientBuffer(clientBuffer)
+	
+
+	local hit_node = {
+
+
+		["UserID"] = nil,
+		["TargetID"] = nil,
+		["HitType"] = nil,
+
+
+	}
+	
+	hit_node.UserID = buffer.readi32(clientBuffer,0)
+	hit_node.TargetID = buffer.readi32(clientBuffer,1)
+	hit_node.HitType = buffer.readi8(clientBuffer,2)
+		
+	
+	return hit_node
+	
+end
+
+local function serializeUpdateNodes(updateNodes)
+
+	local buf = buffer.create(6 * #updateNodes)
+	
+	buffer.writei16(buf,0,#updateNodes)
+	
+	local it = 0
+	
+	for _, updateNode in ipairs(updateNodes) do
+		buffer.writei32(buf,1 + it, updateNode.TargetID or 0)
+		
+		
+		local newVec = DemoFunctions.getKnockbackPos(updateNode.TargetID)
+		local qVec = Quantizer.quantizeVector3(newVec)
+		local newHealth = DemoFunctions.DealDamage(updateNode.TargetID)
+		local newState = DemoFunctions.QueryHurtState(updateNode.TargetID)
+
+		buffer.writei32(buf,2 + it,qVec.X)
+		buffer.writei32(buf,3+ it,qVec.Y)
+		buffer.writei32(buf,4+ it,qVec.Z)
+		buffer.writei8(buf,5+ it,newState)
+		buffer.writei8(buf,6+ it,newHealth)
+		
+		it = it+6
+
+	end
+
+	return buf
+
+end
+
+
+local unserialized_batch = {}
+
+local function updateEnqueue(updateNode)
+
+	table.insert(unserialized_batch,updateNode)
+
+end
+
+
+
+task.spawn(function()
+	
+	
+	while true do
+		
+		task.wait(TICK_RATE)
+		
+		local batchBuffer = serializeUpdateNodes(unserialized_batch)
+		
+		ReplicationEvent:FireAllClients(batchBuffer)
+		
+		
+		
+	end
+	
+	
+	
+end)
+
+
+
+ReplicationEvent.OnServerEvent:Connect(function(plr,serializedBuffer)
+	
+	
+	local temp = unserializeClientBuffer(serializedBuffer)
+	
+	
+	---Do sanity checks on temp node like range and what not----
+	
+	
+	
+	-----if valid then-----
+	updateEnqueue(temp)
+	
+	
+	
+	
+end)
