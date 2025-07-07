@@ -1,0 +1,62 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ReplicationEvent = ReplicatedStorage.ReplicationEvent
+local Players = game:GetService("Players")
+
+
+
+local function processUpdateRequest(node)
+
+	task.spawn(function()
+		
+		
+		---- Replicate Animations via state machine
+		---- Change target position
+		---- Change healthbar
+		----etc etc
+		
+		
+	end)
+
+
+end
+
+
+
+
+ReplicationEvent.OnClientEvent:Connect(function(buf)
+	
+	
+	local it = 0
+	
+	for i = 1, buffer.readi16(buf,0) do
+		
+		
+		local tempNode = {
+			
+			["Target"] = nil,
+			["NewPos"] = nil,
+			["NewHealth"] = nil,
+			["NewState"] = nil,
+			
+		}
+		
+		tempNode.Target = Players:GetPlayerByUserId(buffer.readi32(buf,1+it))
+		local vec = Vector3.new()
+		vec.X = buffer.readi32(buf,2+it)
+		vec.Y = buffer.readi32(buf,3+it)
+		vec.Z = buffer.readi32(buf,4+it)
+		tempNode.NewPos = vec
+		
+		tempNode.NewState = buffer.readi8(buf,5+it)
+		tempNode.NewHealth = buffer.readi8(buf,6+it)
+		processUpdateRequest(tempNode)
+		it = it + 6
+	end
+	
+	
+	
+end)
+
+
+
+
